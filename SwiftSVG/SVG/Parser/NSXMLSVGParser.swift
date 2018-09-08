@@ -66,7 +66,8 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
     
     /// :nodoc:
     public var completionBlock: ((SVGLayer) -> ())?
-    
+    public var failureBlock: ((Error) -> ())?
+
     /// :nodoc:
     public var supportedElements: SVGParserSupportedElements? = nil
     
@@ -87,13 +88,22 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
      - parameter supportedElements: Optional `SVGParserSupportedElements` struct that restrict the elements and attributes that this parser can parse.If no value is provided, all supported attributes will be used.
      - parameter completion: Optional completion block that will be executed after all elements and attribites have been parsed.
      */
-    public convenience init(SVGURL: URL, supportedElements: SVGParserSupportedElements? = nil, completion: ((SVGLayer) -> ())? = nil) {
+    public convenience init(SVGURL: URL, supportedElements: SVGParserSupportedElements? = nil,
+                            failure: ((Error) -> ())? = nil,
+                            completion: ((SVGLayer) -> ())? = nil) {
         
         do {
             let urlData = try Data(contentsOf: SVGURL)
             self.init(SVGData: urlData, supportedElements: supportedElements, completion: completion)
         } catch {
             self.init()
+            self.completionBlock = completion
+            self.failureBlock = failure
+            DispatchQueue.main.safeAsync {
+                failure?(NSError(
+                    domain: "SwiftSVG", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Could not get data from URL"]))
+            }
             print("Couldn't get data from URL")
         }
     }
@@ -104,11 +114,15 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
      - parameter supportedElements: Optional `SVGParserSupportedElements` struct that restricts the elements and attributes that this parser can parse. If no value is provided, all supported attributes will be used.
      - parameter completion: Optional completion block that will be executed after all elements and attribites have been parsed.
      */
-    public required init(SVGData: Data, supportedElements: SVGParserSupportedElements? = SVGParserSupportedElements.allSupportedElements, completion: ((SVGLayer) -> ())? = nil) {
+    public required init(SVGData: Data,
+                         supportedElements: SVGParserSupportedElements? = SVGParserSupportedElements.allSupportedElements,
+                         failure: ((Error) -> ())? = nil,
+                         completion: ((SVGLayer) -> ())? = nil) {
         super.init(data: SVGData)
         self.delegate = self
         self.supportedElements = supportedElements
         self.completionBlock = completion
+        self.failureBlock = failure
     }
     
     /**
@@ -216,7 +230,13 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
         switch code {
         case 76:
             print("Invalid XML: \(SVGParserError.invalidSVG)")
+            DispatchQueue.main.safeAsync {
+                self.failureBlock?(parseError)
+            }
         default:
+            DispatchQueue.main.safeAsync {
+                self.failureBlock?(parseError)
+            }
             break
         }
     }

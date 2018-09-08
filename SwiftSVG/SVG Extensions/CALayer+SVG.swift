@@ -104,6 +104,13 @@ public extension CALayer {
             parserToUse.startParsing()
         }
     }
-    
+}
+
+
+extension CALayer {
+    public static func from(svgData data: Data, parser: SVGParser? = nil,
+                     completion: @escaping (CALayer)->(), failure: @escaping (Error)->()) {
+        return Builder.svg(from: data, parser: parser, completion: completion, failure: failure)
+    }
 }
 
