@@ -67,42 +67,17 @@ public extension CALayer {
      - Parameter completion: A required completion block to execute once the SVG has completed parsing. You must add the passed `SVGLayer` to a sublayer to display it.
      */
     @discardableResult
-    public convenience init(SVGData: Data, parser: SVGParser? = nil, completion: @escaping (SVGLayer) -> ()) {
+    public convenience init(SVGData data: Data, parser: SVGParser? = nil,
+                            failure: ((Error) -> ())? = nil,
+                            completion: @escaping (SVGLayer) -> ()) {
         self.init()
-        
-        if let cached = SVGCache.default[SVGData.cacheKey] {
-            DispatchQueue.main.safeAsync {
-                self.addSublayer(cached)
-            }
-            completion(cached)
-            return
-        }
-        
-        let dispatchQueue = DispatchQueue(label: "com.straussmade.swiftsvg", attributes: .concurrent)
-        
-        dispatchQueue.async {
-            
-            let parserToUse: SVGParser
-            if let parser = parser {
-                parserToUse = parser
-            } else {
-                parserToUse = NSXMLSVGParser(SVGData: SVGData) { (svgLayer) in
-                    
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        guard let layerCopy = svgLayer.svgLayerCopy else {
-                            return
-                        }
-                        SVGCache.default[SVGData.cacheKey] = layerCopy
-                    }
-                    
-                    DispatchQueue.main.safeAsync {
-                        self.addSublayer(svgLayer)
-                    }
-                    completion(svgLayer)
-                }
-            }
-            parserToUse.startParsing()
-        }
+        SVG.layer(
+            from: data, parser: parser,
+            completion: { [unowned self] svgLayer in
+                self.addSublayer(svgLayer)
+                completion(svgLayer)
+            },
+            failure: { failure?($0) })
     }
 }
 
@@ -110,7 +85,7 @@ public extension CALayer {
 extension CALayer {
     public static func from(svgData data: Data, parser: SVGParser? = nil,
                      completion: @escaping (CALayer)->(), failure: @escaping (Error)->()) {
-        return Builder.svg(from: data, parser: parser, completion: completion, failure: failure)
+        return SVG.layer(from: data, parser: parser, completion: completion, failure: failure)
     }
 }
 

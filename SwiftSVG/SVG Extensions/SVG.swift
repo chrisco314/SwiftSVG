@@ -1,8 +1,8 @@
 //
-//  SVGScalingView.swift
+//  SVG.swift
 //  SwiftSVG
 //
-//  Copyright (c) Chris Conover 9/7/18.
+//  Copyright (c) Chris Conover 9/9/18.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -30,38 +30,33 @@ import UIKit
 import AppKit
 #endif
 
+internal class SVG {
 
-public class SVGScalingView: UIView {
+    static func layer(from data: Data, parser: SVGParser? = nil,
+                      completion: @escaping (SVGLayer) -> (),
+                      failure: @escaping (Error) -> ()) {
 
-    public func render(_ data: Data, parser: SVGParser? = nil,
-                completion: (() -> ())? = nil,
-                failure: @escaping ((Error) -> ())) {
-
-        reset()
-        SVG.layer(
-            from: data,
-            completion: { [weak self] (svgLayer) in
-                DispatchQueue.main.safeAsync { [weak self] in
-                    self?.layer.addSublayer(svgLayer)
-                }
-                completion?()
-            },
-            failure: { failure($0) })
-    }
-
-    public func reset() { svgLayer?.removeFromSuperlayer() }
-
-    override public func layoutSublayers(of layer: CALayer) {
-        if layer === self.layer {
-            print("SvgView.layoutSublayers: resizing svgLayer to main layer")
-            if let _ = svgLayer {
-                print("detected svg layer, updating...")
-            }
-            svgLayer?.resizeToFit(bounds)
+        if let cached = SVGCache.default[data.cacheKey]?.svgLayerCopy {
+            completion(cached)
+            return
         }
-    }
 
-    var svgLayer: SVGLayer? {
-        return layer.sublayers?.first as? SVGLayer
+        let dispatchQueue = DispatchQueue(label: "com.straussmade.swiftsvg", attributes: .concurrent)
+        dispatchQueue.async {
+            let parser = parser ?? NSXMLSVGParser(
+                SVGData: data,
+                failure: failure,
+                completion: { (svgLayer) in
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        if let layerCopy = svgLayer.svgLayerCopy {
+                            SVGCache.default[data.cacheKey] = layerCopy
+                        }
+
+                        dispatchQueue.async { completion(svgLayer) }
+                    }
+            })
+
+            parser.startParsing()
+        }
     }
 }
