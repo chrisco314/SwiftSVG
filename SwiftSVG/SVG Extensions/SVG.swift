@@ -30,14 +30,60 @@ import UIKit
 import AppKit
 #endif
 
-internal class SVG {
+public class SVG {
 
-    static func layer(from data: Data, parser: SVGParser? = nil,
-                      completion: @escaping (SVGLayer) -> (),
-                      failure: @escaping (Error) -> ()) {
+    class Error: NSError {
+
+        static var invalidSVG: Swift.Error {
+            return Error(code: 10, description: "Invalid URL")
+        }
+
+        static var invalidURL: Swift.Error {
+            return Error(code: 20, description: "Could not get data from  URL")
+        }
+
+        init(code: Int, description: String) {
+            super.init(
+                domain: "SwiftSVG", code: code,
+                userInfo: [NSLocalizedDescriptionKey: description])
+        }
+
+        required init?(coder aDecoder: NSCoder) { super.init(coder: aDecoder) }
+    }
+
+    public static func data(from SVGNamed: String) -> Data?  {
+        if #available(iOS 9.0, OSX 10.11, *) {
+
+            #if os(iOS)
+            if let asset = NSDataAsset(name: SVGNamed) {
+                return asset.data
+            }
+            #elseif os(OSX)
+            if let asset = NSDataAsset(name: NSDataAsset.Name(SVGNamed)) {
+                return asset.data
+            }
+            #endif
+
+            if let svgURL = Bundle.main.url(forResource: SVGNamed, withExtension: "svg") {
+                return try? Data(contentsOf: svgURL)
+            }
+
+        } else if let svgURL = Bundle.main.url(forResource: SVGNamed, withExtension: "svg") {
+            return try? Data(contentsOf: svgURL)
+        }
+
+        return nil
+    }
+
+
+    public static func layer(from data: Data, parser: SVGParser? = nil,
+                             success: @escaping (SVGLayer) -> (),
+                             failure: ((Swift.Error) -> ())? = nil,
+                             completion: (() -> ())? = nil) {
 
         if let cached = SVGCache.default[data.cacheKey]?.svgLayerCopy {
-            completion(cached)
+            success(cached)
+            completion?()
             return
         }
 
@@ -45,16 +91,16 @@ internal class SVG {
         dispatchQueue.async {
             let parser = parser ?? NSXMLSVGParser(
                 SVGData: data,
-                failure: failure,
-                completion: { (svgLayer) in
+                success: { (svgLayer) in
                     DispatchQueue.global(qos: .userInitiated).async {
                         if let layerCopy = svgLayer.svgLayerCopy {
                             SVGCache.default[data.cacheKey] = layerCopy
                         }
 
-                        dispatchQueue.async { completion(svgLayer) }
-                    }
-            })
+                        dispatchQueue.async { success(svgLayer) }
+                    }},
+                failure: failure,
+                completion: completion)
 
             parser.startParsing()
         }

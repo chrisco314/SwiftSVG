@@ -65,8 +65,10 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
     fileprivate var elementStack = Stack<SVGElement>()
     
     /// :nodoc:
-    public var completionBlock: ((SVGLayer) -> ())?
+    public var successBlock: (SVGLayer) -> ()
     public var failureBlock: ((Error) -> ())?
+    public var completionBlock: (() -> ())?
+    public var error: Error?
 
     /// :nodoc:
     public var supportedElements: SVGParserSupportedElements? = nil
@@ -79,6 +81,7 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
     
     /// :nodoc:
     private init() {
+        successBlock = { _ in }
         super.init(data: Data())
     }
     
@@ -89,20 +92,21 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
      - parameter completion: Optional completion block that will be executed after all elements and attribites have been parsed.
      */
     public convenience init(SVGURL: URL, supportedElements: SVGParserSupportedElements? = nil,
+                            success: @escaping (SVGLayer) -> (),
                             failure: ((Error) -> ())? = nil,
-                            completion: ((SVGLayer) -> ())? = nil) {
+                            completion: (() -> ())? = nil) {
         
         do {
             let urlData = try Data(contentsOf: SVGURL)
-            self.init(SVGData: urlData, supportedElements: supportedElements, completion: completion)
+            self.init(SVGData: urlData, supportedElements: supportedElements,
+                      success: success, failure: failure, completion: completion)
         } catch {
             self.init()
-            self.completionBlock = completion
+            self.successBlock = success
             self.failureBlock = failure
+            self.completionBlock = completion
             DispatchQueue.main.safeAsync {
-                failure?(NSError(
-                    domain: "SwiftSVG", code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Could not get data from URL"]))
+                failure?(SVG.Error.invalidSVG)
             }
             print("Couldn't get data from URL")
         }
@@ -116,13 +120,15 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
      */
     public required init(SVGData: Data,
                          supportedElements: SVGParserSupportedElements? = SVGParserSupportedElements.allSupportedElements,
+                         success: @escaping (SVGLayer) -> (),
                          failure: ((Error) -> ())? = nil,
-                         completion: ((SVGLayer) -> ())? = nil) {
+                         completion: (() -> ())? = nil) {
+        self.supportedElements = supportedElements
+        self.successBlock = success
+        self.failureBlock = failure
+        self.completionBlock = completion
         super.init(data: SVGData)
         self.delegate = self
-        self.supportedElements = supportedElements
-        self.completionBlock = completion
-        self.failureBlock = failure
     }
     
     /**
@@ -214,7 +220,10 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
         }
         if self.asyncParseCount <= 0 {
             DispatchQueue.main.safeAsync {
-                self.completionBlock?(self.containerLayer)
+                if self.error == nil {
+                    self.successBlock(self.containerLayer)
+                }
+                self.completionBlock?()
             }
         }
     }
@@ -226,6 +235,7 @@ open class NSXMLSVGParser: XMLParser, XMLParserDelegate {
      */
     public func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
         print("Parse Error: \(parseError)")
+        self.error = parseError
         let code = (parseError as NSError).code
         switch code {
         case 76:
@@ -277,7 +287,10 @@ extension NSXMLSVGParser: CanManageAsychronousParsing {
             return
         }
         DispatchQueue.main.safeAsync {
-            self.completionBlock?(self.containerLayer)
+            if self.error == nil {
+                self.successBlock(self.containerLayer)
+            }
+            self.completionBlock?()
         }
     }
     

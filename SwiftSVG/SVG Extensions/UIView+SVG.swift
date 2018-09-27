@@ -69,7 +69,7 @@ public extension UIView {
      - Parameter parser: The optional parser to use to parse the SVG file
      - Parameter completion: A required completion block to execute once the SVG has completed parsing. The passed `SVGLayer` will be added to this view's sublayers before executing the completion block
      */
-    public convenience init(SVGNamed: String, parser: SVGParser? = nil, completion: ((SVGLayer) -> ())? = nil) {
+    public convenience init(SVGNamed: String, parser: SVGParser? = nil, success: ((SVGLayer) -> ())? = nil) {
         
         // TODO: This is too many guards to really make any sense. Also approaching on the
         // pyramid of death Refactor this at some point to be able to work cross-platform.
@@ -93,14 +93,14 @@ public extension UIView {
                 }
                 do {
                     let thisData = try Data(contentsOf: svgURL)
-                    self.init(SVGData: thisData, parser: parser, completion: completion)
+                    self.init(SVGData: thisData, parser: parser, success: success)
                 } catch {
                     self.init()
                     return
                 }
                 return
             }
-            self.init(SVGData: unwrapped, parser: parser, completion: completion)
+            self.init(SVGData: unwrapped, parser: parser, success: success)
         } else {
             guard let svgURL = Bundle.main.url(forResource: SVGNamed, withExtension: "svg") else {
                 self.init()
@@ -108,7 +108,7 @@ public extension UIView {
             }
             do {
                 let data = try Data(contentsOf: svgURL)
-                self.init(SVGData: data, parser: parser, completion: completion)
+                self.init(SVGData: data, parser: parser, success: success)
             } catch {
                 self.init()
                 return
@@ -129,10 +129,16 @@ public extension UIView {
      - Parameter parser: The optional parser to use to parse the SVG file
      - Parameter completion: A required completion block to execute once the SVG has completed parsing. The passed `SVGLayer` will be added to this view's sublayers before executing the completion block
      */
-    public convenience init(SVGURL: URL, parser: SVGParser? = nil, completion: ((SVGLayer) -> ())? = nil) {
+    public convenience init(SVGURL: URL, parser: SVGParser? = nil,
+                            success: ((SVGLayer) -> ())? = nil,
+                            failure: ((Error) -> Void)? = nil,
+                            completion: (() -> ())? = nil) {
         do {
             let svgData = try Data(contentsOf: SVGURL)
-            self.init(SVGData: svgData, parser: parser, completion: completion)
+            self.init(SVGData: svgData, parser: parser,
+                      success: success,
+                      failure: failure,
+                      completion: completion)
         } catch {
             self.init()
             Swift.print("No data at URL: \(SVGURL)")
@@ -150,15 +156,21 @@ public extension UIView {
      - Parameter parser: The optional parser to use to parse the SVG file
      - Parameter completion: A required completion block to execute once the SVG has completed parsing. The passed `SVGLayer` will be added to this view's sublayers before executing the completion block
      */
-	public convenience init(SVGData svgData: Data, parser: SVGParser? = nil, completion: ((SVGLayer) -> ())? = nil) {
+	public convenience init(SVGData svgData: Data, parser: SVGParser? = nil,
+                            success: ((SVGLayer) -> ())? = nil,
+                            failure: ((Error) -> ())? = nil,
+                            completion: (() -> ())? = nil) {
 		self.init()
         
-        CALayer(SVGData: svgData, parser: parser) { [weak self] (svgLayer) in
-            DispatchQueue.main.safeAsync {
-                self?.nonOptionalLayer.addSublayer(svgLayer)
-            }
-            completion?(svgLayer)
-        }
-	}
+        CALayer(SVGData: svgData, parser: parser,
+                success: { [weak self] (svgLayer) in
+                    DispatchQueue.main.safeAsync {
+                        self?.nonOptionalLayer.addSublayer(svgLayer)
+                    }
+                    success?(svgLayer)
+            },
+                failure: failure,
+                completion: completion)
+    }
     
 }
