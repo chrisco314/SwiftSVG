@@ -59,7 +59,7 @@ public class SVGRenderingView: UIView {
             }
         }
     }
-    
+
     var svgLayer: SVGLayer? {
         return nonOptionalLayer.sublayers?.first as? SVGLayer
     }
@@ -75,7 +75,6 @@ public class SVGCenteringView: SVGRenderingView {
             if let svgLayer = svgLayer {
                 svgLayer.centerToFit(bounds)
             }
-
         }
     }
 }

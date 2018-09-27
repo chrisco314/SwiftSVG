@@ -69,6 +69,42 @@ public extension SVGLayerType where Self: CALayer {
         }
         return self
     }
+
+    public func centerToFit(_ rect: CGRect) -> Self {
+
+        let boundingBoxAspectRatio = self.boundingBox.width / self.boundingBox.height
+        let viewAspectRatio = rect.width / rect.height
+
+        let scaleFactor: CGFloat
+        if (boundingBoxAspectRatio > viewAspectRatio) {
+            // Width is limiting factor
+            scaleFactor = rect.width / self.boundingBox.width
+        } else {
+            // Height is limiting factorÔ
+            scaleFactor = rect.height / self.boundingBox.height
+        }
+
+        if boundingBox.origin != .init() {
+            print("Detected offset in SVG, translating by \(boundingBox.origin)")
+        }
+
+
+//        bounds = boundingBox
+//        bounds = .init(origin: -boundingBox.origin, size: boundingBox.size)
+        let transform = CGAffineTransform.identity
+            .translatedBy(x: -rect.origin.x, y: -rect.origin.y)
+            .scaledBy(x: scaleFactor, y: scaleFactor)
+
+        DispatchQueue.main.safeAsync {
+            self.setAffineTransform(transform)
+        }
+
+        return self
+    }
+}
+
+internal prefix func - (left: CGPoint) -> CGPoint {
+    return CGPoint(x: -left.x, y: -left.y)
 }
 
 /**
