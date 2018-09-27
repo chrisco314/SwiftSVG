@@ -51,11 +51,16 @@ public extension CALayer {
      - Parameter completion: A required completion block to execute once the SVG has completed parsing. You must add the passed `SVGLayer` to a sublayer to display it.
      */
     @discardableResult
-    public convenience init(SVGURL: URL, parser: SVGParser? = nil, completion: @escaping (SVGLayer) -> ()) {
+    public convenience init(SVGURL: URL, parser: SVGParser? = nil,
+                            success: @escaping (SVGLayer) -> (),
+                            failure: ((Error) -> Void)? = nil,
+                            completion: (() -> Void)? = nil) {
         do {
             let svgData = try Data(contentsOf: SVGURL)
-            self.init(SVGData: svgData, parser: parser, completion: completion)
+            self.init(SVGData: svgData, parser: parser,
+                      success: success, failure: failure, completion: completion)
         } catch {
+            failure?(SVG.Error.invalidSVG)
             self.init()
         }
     }
@@ -68,24 +73,28 @@ public extension CALayer {
      */
     @discardableResult
     public convenience init(SVGData data: Data, parser: SVGParser? = nil,
+                            success: @escaping (SVGLayer) -> (),
                             failure: ((Error) -> ())? = nil,
-                            completion: @escaping (SVGLayer) -> ()) {
+                            completion: (() -> Void)? = nil) {
         self.init()
         SVG.layer(
             from: data, parser: parser,
-            completion: { [unowned self] svgLayer in
-                self.addSublayer(svgLayer)
-                completion(svgLayer)
+            success: { [unowned self] svgLayer in
+                success(svgLayer)
             },
-            failure: { failure?($0) })
+            failure: { failure?($0) },
+            completion: completion)
     }
 }
 
 
 extension CALayer {
     public static func from(svgData data: Data, parser: SVGParser? = nil,
-                     completion: @escaping (CALayer)->(), failure: @escaping (Error)->()) {
-        return SVG.layer(from: data, parser: parser, completion: completion, failure: failure)
+                            success: @escaping (SVGLayer) -> (),
+                            failure: ((Error) -> ())? = nil,
+                            completion: (() -> Void)? = nil) {
+        return SVG.layer(from: data, parser: parser,
+                         success: success, failure: failure, completion: completion)
     }
 }
 

@@ -68,9 +68,9 @@ open class SVGView : UIView {
             #endif
             
             if let url = bundle.url(forResource: thisName, withExtension: "svg") {
-                CALayer(SVGURL: url) { [weak self] (svgLayer) in
+                CALayer(SVGURL: url, success: { [weak self] (svgLayer) in
                     self?.nonOptionalLayer.addSublayer(svgLayer)
-                }
+                })
             } else if #available(iOS 9.0, tvOS 9.0, OSX 10.11, *) {
                 #if os(iOS) || os(tvOS)
                 guard let asset = NSDataAsset(name: thisName, bundle: bundle) else {
@@ -82,9 +82,9 @@ open class SVGView : UIView {
                 }
                 #endif
                 let data = asset.data
-                CALayer(SVGData: data) { [weak self] (svgLayer) in
+                CALayer(SVGData: data, success: { [weak self] (svgLayer) in
                     self?.nonOptionalLayer.addSublayer(svgLayer)
-                }
+                })
             }
       
         

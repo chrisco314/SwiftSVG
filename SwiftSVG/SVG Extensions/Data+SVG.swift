@@ -34,26 +34,6 @@ import AppKit
 extension Data {
 
     public static func from(SVGNamed: String) -> Data? {
-        if #available(iOS 9.0, OSX 10.11, *) {
-
-            #if os(iOS)
-            if let asset = NSDataAsset(name: SVGNamed) {
-                return asset.data
-            }
-            #elseif os(OSX)
-            if let asset = NSDataAsset(name: NSDataAsset.Name(SVGNamed)) {
-                return asset.data
-            }
-            #endif
-
-            if let svgURL = Bundle.main.url(forResource: SVGNamed, withExtension: "svg") {
-                return try? Data(contentsOf: svgURL)
-            }
-
-        } else if let svgURL = Bundle.main.url(forResource: SVGNamed, withExtension: "svg") {
-            return try? Data(contentsOf: svgURL)
-        }
-
-        return nil
+        return SVG.data(from: SVGNamed)
     }
 }

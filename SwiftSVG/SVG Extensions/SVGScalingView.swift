@@ -31,37 +31,51 @@ import AppKit
 #endif
 
 
-public class SVGScalingView: UIView {
+
+public class SVGRenderingView: UIView {
 
     public func render(_ data: Data, parser: SVGParser? = nil,
-                completion: (() -> ())? = nil,
-                failure: @escaping ((Error) -> ())) {
+                       success: (() -> ())? = nil,
+                       failure: ((Error) -> ())? = nil) {
 
         reset()
         SVG.layer(
             from: data,
-            completion: { [weak self] (svgLayer) in
+            success: { [weak self] (svgLayer) in
                 DispatchQueue.main.safeAsync { [weak self] in
-                    self?.layer.addSublayer(svgLayer)
-                }
-                completion?()
-            },
-            failure: { failure($0) })
+                    self?.nonOptionalLayer.addSublayer(svgLayer)
+                    success?()
+                }},
+            failure: failure)
     }
 
     public func reset() { svgLayer?.removeFromSuperlayer() }
 
     override public func layoutSublayers(of layer: CALayer) {
+
         if layer === self.layer {
-            print("SvgView.layoutSublayers: resizing svgLayer to main layer")
-            if let _ = svgLayer {
-                print("detected svg layer, updating...")
+            if let svgLayer = svgLayer {
+//                svgLayer.resizeToFit(bounds)
             }
-            svgLayer?.resizeToFit(bounds)
         }
     }
-
+    
     var svgLayer: SVGLayer? {
-        return layer.sublayers?.first as? SVGLayer
+        return nonOptionalLayer.sublayers?.first as? SVGLayer
+    }
+}
+
+
+public class SVGCenteringView: SVGRenderingView {
+
+    override public func layoutSublayers(of layer: CALayer) {
+        super.layoutSublayers(of: layer)
+
+        if layer === self.layer {
+            if let svgLayer = svgLayer {
+                svgLayer.centerToFit(bounds)
+            }
+
+        }
     }
 }

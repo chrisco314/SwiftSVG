@@ -57,10 +57,19 @@ public protocol SVGParser {
         - supportedElements: The elements and corresponding attribiutes the parser can parse
         - completion: A closure to execute after the parser has completed parsing and processing the SVG
      */
-    init(SVGData: Data, supportedElements: SVGParserSupportedElements?, failure: ((Error) -> ())?, completion: ((SVGLayer) -> ())?)
-    
+    init(SVGData: Data, supportedElements: SVGParserSupportedElements?,
+         success: @escaping ((SVGLayer) -> ()),
+         failure: ((Error) -> ())?,
+         completion: (() -> ())?)
+
+    /// A closure that is executed upon successful processing of all elements. Should be guaranteed to be executed after all elements have been processed, even if parsing asynchronously.
+    var successBlock: (SVGLayer) -> () { get }
+
+    /// A closure that is executed upon failure to process any element.  May be called repeatedly
+    var failureBlock: ((Error) -> ())? { get }
+
     /// A closure that is executed after all elements have been processed. Should be guaranteed to be executed after all elements have been processed, even if parsing asynchronously.
-    var completionBlock: ((SVGLayer) -> ())? { get }
+    var completionBlock: (() -> ())? { get }
     
     /// A struct listing all the elements and its attributes that should be parsed
     var supportedElements: SVGParserSupportedElements? { get }
