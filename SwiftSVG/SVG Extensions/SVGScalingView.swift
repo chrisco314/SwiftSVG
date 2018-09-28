@@ -35,7 +35,7 @@ import AppKit
 public class SVGRenderingView: UIView {
 
     public func render(_ data: Data, parser: SVGParser? = nil,
-                       success: (() -> ())? = nil,
+                       success: ((SVGLayer) -> ())? = nil,
                        failure: ((Error) -> ())? = nil) {
 
         reset()
@@ -44,7 +44,7 @@ public class SVGRenderingView: UIView {
             success: { [weak self] (svgLayer) in
                 DispatchQueue.main.safeAsync { [weak self] in
                     self?.nonOptionalLayer.addSublayer(svgLayer)
-                    success?()
+                    success?(svgLayer)
                 }},
             failure: failure)
     }
