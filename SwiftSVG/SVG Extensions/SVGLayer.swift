@@ -88,9 +88,6 @@ public extension SVGLayerType where Self: CALayer {
             print("Detected offset in SVG, translating by \(boundingBox.origin)")
         }
 
-
-//        bounds = boundingBox
-//        bounds = .init(origin: -boundingBox.origin, size: boundingBox.size)
         let transform = CGAffineTransform.identity
             .translatedBy(x: -rect.origin.x, y: -rect.origin.y)
             .scaledBy(x: scaleFactor, y: scaleFactor)

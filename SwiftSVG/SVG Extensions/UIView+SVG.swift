@@ -172,5 +172,27 @@ public extension UIView {
                 failure: failure,
                 completion: completion)
     }
-    
+
+}
+
+// SVG Rendering support
+extension UIView {
+    public func render(_ data: Data, parser: SVGParser? = nil,
+                       success: ((SVGLayer) -> ())? = nil,
+                       failure: ((Error) -> ())? = nil) {
+        clearSVGLayer()
+        SVG.layer(
+            from: data,
+            success: { [weak self] (svgLayer) in
+                DispatchQueue.main.safeAsync { [weak self] in
+                    self?.nonOptionalLayer.addSublayer(svgLayer)
+                    success?(svgLayer)
+                }},
+            failure: failure)
+    }
+
+    public func clearSVGLayer() { svgLayer?.removeFromSuperlayer() }
+    var svgLayer: SVGLayer? {
+        return nonOptionalLayer.sublayers?.first as? SVGLayer
+    }
 }
