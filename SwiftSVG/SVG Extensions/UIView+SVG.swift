@@ -179,7 +179,8 @@ public extension UIView {
 extension UIView {
     public func render(_ data: Data, parser: SVGParser? = nil,
                        success: ((SVGLayer) -> ())? = nil,
-                       failure: ((Error) -> ())? = nil) {
+                       failure: ((Error) -> ())? = nil,
+                       completion: (() -> ())? = nil) {
         clearSVGLayer()
         SVG.layer(
             from: data,
@@ -188,7 +189,8 @@ extension UIView {
                     self?.nonOptionalLayer.addSublayer(svgLayer)
                     success?(svgLayer)
                 }},
-            failure: failure)
+            failure: failure,
+            completion: completion)
     }
 
     public func clearSVGLayer() { svgLayer?.removeFromSuperlayer() }
